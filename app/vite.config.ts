@@ -11,6 +11,7 @@ export default defineConfig({
       '/refresh': 'http://localhost:5000',
       '/get_client_data': 'http://localhost:5000',
       '/download_csv': 'http://localhost:5000',
+      '/download_all_documents': 'http://localhost:5000',
     },
   },
 });

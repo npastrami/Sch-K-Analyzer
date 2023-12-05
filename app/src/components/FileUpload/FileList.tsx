@@ -1,7 +1,7 @@
 /** @jsxImportSource @emotion/react */
 
 import { FC, useContext } from "react";
-import { Grid, IconButton, Typography, Select, MenuItem } from "@mui/material";
+import { Grid, Button, IconButton, Typography, Select, MenuItem } from "@mui/material";
 import { useState, useEffect } from "react";
 import { FileWithID } from ".";
 import { TrashCanIcon } from "./TrashCanIcon";
@@ -14,8 +14,23 @@ interface FileListProps {
   onRemove: (id: string) => void;
 }
 
+const buttonStyle = {
+  marginRight: '10px',
+  height: '36px', 
+  minWidth: '200px', 
+};
+
 export const FileList: FC<FileListProps> = ({ files, onRemove }) => {
   const [localFiles, setLocalFiles] = useState<FileWithID[]>(files);
+
+  // State to track if all files are extracted
+  const [allExtracted, setAllExtracted] = useState(false);
+
+  useEffect(() => {
+    // Check if all files have status 'Extract Completed'
+    const allFilesExtracted = localFiles.every(file => file.status === 'Extract Completed');
+    setAllExtracted(allFilesExtracted);
+  }, [localFiles]);
 
   // Sync localFiles with files prop
   useEffect(() => {
@@ -50,6 +65,23 @@ export const FileList: FC<FileListProps> = ({ files, onRemove }) => {
     const a = document.createElement('a');
     a.href = url;
     a.download = `${documentName}.csv`;
+    a.click();
+  };
+
+  const handleDownloadAll = async (clientID: string) => {
+    const documentNames = localFiles.map(file => file.path);
+    const response = await fetch('/download_all_documents', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ clientID, documentNames }) // Pass the array of document names
+    });
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${clientID}_FOF_Data.xlsx`; // Change file extension to xlsx
     a.click();
   };
 
@@ -162,8 +194,22 @@ export const FileList: FC<FileListProps> = ({ files, onRemove }) => {
           ))}
         </div>
       </div>
+      <div css={{ display: 'flex', flexDirection: 'row', marginLeft: 'auto', marginTop: '20px' }}>
+        {/* Download All Button */}
+        <Button
+          variant="contained"
+          onClick={(_e) => handleDownloadAll(clientID)}
+          disabled={!allExtracted} // Disable button if not all files are extracted
+          style={{ marginRight: '10px',
+          height: '36px', 
+          minWidth: '200px', marginTop: '20px' }}
+        >
+          Download All
+        </Button>
 
-      <ExtractButton files={localFiles} setFiles={setLocalFiles} />
+        {/* Existing Extract Button */}
+        <ExtractButton files={localFiles} setFiles={setLocalFiles} />
+      </div>
     </div>
   );
 };

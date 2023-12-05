@@ -106,6 +106,20 @@ class Database:
         output.seek(0)
 
         return csv_content
+    
+    def generate_sheet_data(self, document_id, client_id):
+        query = """ SELECT field_name, field_value, confidence FROM extracted_fields WHERE doc_name = %s AND client_id = %s"""
+        self.cur.execute(query, (document_id, client_id))
+        rows = self.cur.fetchall()
+
+        # Format the data for Excel sheet
+        sheet_data = []
+        sheet_data.append([f"Document Name: {document_id}"])
+        sheet_data.append(["Field Names", "Field Values", "Confidence"])
+        for row in rows:
+            sheet_data.append([row[0], row[1], row[2]])
+
+        return sheet_data
 
     def close(self):
         self.cur.close()    
