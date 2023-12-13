@@ -1,5 +1,6 @@
 import psycopg2
 import os
+import re
 import csv
 from io import StringIO
 
@@ -108,18 +109,65 @@ class Database:
         return csv_content
     
     def generate_sheet_data(self, document_id, client_id):
-        query = """ SELECT field_name, field_value, confidence FROM extracted_fields WHERE doc_name = %s AND client_id = %s"""
+        query = """SELECT field_name, field_value, confidence FROM extracted_fields WHERE doc_name = %s AND client_id = %s"""
         self.cur.execute(query, (document_id, client_id))
         rows = self.cur.fetchall()
 
-        # Format the data for Excel sheet
-        sheet_data = []
-        sheet_data.append([f"Document Name: {document_id}"])
-        sheet_data.append(["Field Names", "Field Values", "Confidence"])
-        for row in rows:
-            sheet_data.append([row[0], row[1], row[2]])
+        original_sheet_data = [
+            ["Document Name: {}".format(document_id)],
+            ["Field Names", "Field Values", "Confidence"]
+        ]
 
-        return sheet_data
+        keywords_data = {}
+
+        for field_name, field_value, confidence in rows:
+            original_sheet_data.append([field_name, field_value, confidence])
+
+            # Extract item codes from code keywords
+            if '[code' in field_name:
+                # print(field_name)
+                keyword, code = field_name.split(' [')
+                # print(keyword)
+                code = code.rstrip(']')
+                # print(code)
+                
+                # Extracting the number from the code
+                code_number = code.split(' ')[-1]
+                modified_keyword = f"{keyword} {code_number}"
+                # print(f"mod keyword: {modified_keyword}")
+                # Store code and confidence in the dictionary for modified_keyword
+                if modified_keyword not in keywords_data:
+                    keywords_data[modified_keyword] = {'code': field_value, 'code_confidence': confidence}
+
+                # Update code for the original keyword if it exists - adds code to keyword in keyword_data before amount or confidence
+                if keyword in keywords_data:
+                    keywords_data[keyword].update({'code': field_value})
+            else:
+                keyword = field_name  # bring in amount-keywords
+                # add amount and confidence to keywords data
+                if keyword not in keywords_data:
+                    keywords_data[keyword] = {'amount': field_value, 'amount_confidence': confidence}
+                else:
+                    # Update in case of append cause GPT said to
+                    keywords_data[keyword].update({'amount': field_value, 'amount_confidence': confidence})
+
+        # print(f"keyword data:{keywords_data}") 
+        # Construct the FOF sheet data
+        fof_sheet_data = [
+            ["Document Name: FOF_{}".format(document_id)],
+            ["Keyword", "Item Codes", "Amount", "Confidence"]
+        ]
+
+        for keyword, data in keywords_data.items():
+            row = [
+                keyword,
+                data.get('code', ''),
+                data.get('amount', ''),
+                data.get('amount_confidence', 0)
+            ]
+            fof_sheet_data.append(row)
+
+        return original_sheet_data, fof_sheet_data
 
     def close(self):
         self.cur.close()    
