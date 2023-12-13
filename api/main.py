@@ -6,9 +6,13 @@ from refresh import refresh_blueprint
 from handle_duplicates import handle_duplicates_blueprint
 from database import Database
 from table_builder import TableBuilder
-import openpyxl
 import os
+from azure.storage.blob import BlobServiceClient
+from io import BytesIO
+from azure_credentials import BUCKET_NAME_1065, CONNECTION_STRING, BLOB_NAME
+import openpyxl
 from tempfile import NamedTemporaryFile
+from copyfunc import copy_worksheet
 
 
 app = Flask(__name__)
@@ -49,24 +53,61 @@ def download_all_documents():
     client_id = data['clientID']
     document_names = data['documentNames']
     
+    # Initialize the BlobServiceClient
+    blob_service_client = BlobServiceClient.from_connection_string(CONNECTION_STRING)
+    container_client = blob_service_client.get_container_client(BUCKET_NAME_1065)
+
+    # Download the existing FOFtest.xlsx
+    blob_client = container_client.get_blob_client('FOFtest.xlsx')
+    fof_test_stream = BytesIO(blob_client.download_blob().readall())
+    fof_workbook = openpyxl.load_workbook(fof_test_stream)
+    
     db = Database(None, None)
 
     # Create a new workbook
     workbook = openpyxl.Workbook()
     workbook.remove(workbook.active)  # Remove the default sheet
-    
+    copy_worksheet(fof_workbook, workbook, 'Sheet1')
     def sanitize_sheet_title(title):
         invalid_chars = ':\\/?*[]'
         for char in invalid_chars:
             title = title.replace(char, '')
-        return title
+        return title[:31]
 
     for document_name in document_names:
-        document_name = sanitize_sheet_title(document_name)
-        sheet_data = db.generate_sheet_data(document_name, client_id)
-        sheet = workbook.create_sheet(title=document_name)
-        for row in sheet_data:
-            sheet.append(row)
+        sanitized_name = sanitize_sheet_title(document_name)
+        original_data, fof_data = db.generate_sheet_data(sanitized_name, client_id)
+        
+        # Add original sheet
+        original_sheet = workbook.create_sheet(title=sanitized_name)
+        for row in original_data:
+            original_sheet.append(row)
+        
+        # Add FOF sheet
+        fof_sheet = workbook.create_sheet(title=f"FOF_{sanitized_name}")
+        for row in fof_data:
+            fof_sheet.append(row)
+    print(f"workbook: {vars(workbook)}")
+    # Update Sheet1 with structured data from the FOF_ worksheets
+    # sheet1 = workbook['Sheet1']
+    # for index, entry in enumerate(fof_sheet, start=3):  # row 2 is headers
+    #     print(f"index: {index}")
+    #     print(f"entry: {entry}")
+    #     sheet1.cell(row=index, column=1, value=entry[0])
+    #     sheet1.cell(row=index, column=2, value=entry[1])
+    #     sheet1.cell(row=index, column=3, value=entry[2])
+    #     sheet1.cell(row=index, column=4, value=entry[3])
+    # for fofsheet in workbook:
+        # info in sheet 1 in specific cells to be 
+
+
+    # Save the workbook to a BytesIO object
+    output_stream = BytesIO()
+    workbook.save(output_stream)
+    output_stream.seek(0)
+
+    # Upload the updated workbook to Azure Blob Storage
+    blob_client.upload_blob(output_stream, overwrite=True)
 
     db.close()
 
