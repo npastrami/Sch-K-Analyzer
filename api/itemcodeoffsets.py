@@ -120,12 +120,12 @@ other_information_offsets = {
 }
 
 keyword_to_offset_dict = {
-    "Other income (loss)": other_income_loss_offsets,
-    "Other deductions": other_deductions_offsets,
-    "Self-employment earnings (loss)": self_employment_earnings_loss_offsets,
-    "Credits": credits_offsets,
+    "other income": other_income_loss_offsets,
+    "other deductions": other_deductions_offsets,
+    "self-employment earnings": self_employment_earnings_loss_offsets,
+    "credits": credits_offsets,
     "Alternative minimum tax (AMT) items": amt_items_offsets,
-    "Tax-exempt income": tax_exempt_income_and_nondeductible_expenses_offsets,
-    "Distributions": distributions_offsets,
-    "Other information": other_information_offsets,
+    "tax-exempt income and nondeductible expenses": tax_exempt_income_and_nondeductible_expenses_offsets,
+    "distributions": distributions_offsets,
+    "other information": other_information_offsets,
 }
