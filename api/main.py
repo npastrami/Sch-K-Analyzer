@@ -13,6 +13,7 @@ from azure_credentials import BUCKET_NAME_1065, CONNECTION_STRING, BLOB_NAME
 import openpyxl
 from tempfile import NamedTemporaryFile
 from copyfunc import copy_worksheet
+from FOFexport import process_FOF
 
 
 app = Flask(__name__)
@@ -88,26 +89,15 @@ def download_all_documents():
         for row in fof_data:
             fof_sheet.append(row)
     print(f"workbook: {vars(workbook)}")
-    # Update Sheet1 with structured data from the FOF_ worksheets
-    # sheet1 = workbook['Sheet1']
-    # for index, entry in enumerate(fof_sheet, start=3):  # row 2 is headers
-    #     print(f"index: {index}")
-    #     print(f"entry: {entry}")
-    #     sheet1.cell(row=index, column=1, value=entry[0])
-    #     sheet1.cell(row=index, column=2, value=entry[1])
-    #     sheet1.cell(row=index, column=3, value=entry[2])
-    #     sheet1.cell(row=index, column=4, value=entry[3])
-    # for fofsheet in workbook:
-        # info in sheet 1 in specific cells to be 
-
+    
+    fof_sheet_objects = [workbook[sheet_name] for sheet_name in workbook.sheetnames if 'FOF_' in sheet_name]
+    
+    process_FOF(workbook, fof_sheet_objects)
 
     # Save the workbook to a BytesIO object
     output_stream = BytesIO()
     workbook.save(output_stream)
     output_stream.seek(0)
-
-    # Upload the updated workbook to Azure Blob Storage
-    blob_client.upload_blob(output_stream, overwrite=True)
 
     db.close()
 
@@ -130,4 +120,3 @@ def download_all_documents():
 
 if __name__ == "__main__":
     app.run(debug=True)
-#JO-2
