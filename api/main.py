@@ -120,16 +120,3 @@ def download_all_documents():
 
 if __name__ == "__main__":
     app.run(debug=True)
-#JO-2
-
-# Update Sheet1 with structured data from the FOF_ worksheets
-    # sheet1 = workbook['Sheet1']
-    # for index, entry in enumerate(fof_sheet, start=3):  # row 2 is headers
-    #     print(f"index: {index}")
-    #     print(f"entry: {entry}")
-    #     sheet1.cell(row=index, column=1, value=entry[0])
-    #     sheet1.cell(row=index, column=2, value=entry[1])
-    #     sheet1.cell(row=index, column=3, value=entry[2])
-    #     sheet1.cell(row=index, column=4, value=entry[3])
-    # for fofsheet in workbook:
-        # info in sheet 1 in specific cells to be 
