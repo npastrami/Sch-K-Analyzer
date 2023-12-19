@@ -1,5 +1,6 @@
 import openpyxl
 from openpyxl.utils import get_column_letter
+from openpyxl.styles import Alignment
 import numpy as np
 import pandas as pd
 import re
@@ -74,4 +75,16 @@ def process_FOF(workbook, fof_sheets):
                     # Amounts are in the third column (Column C)
                     amount_cell = row[2].value
                     target_worksheet.cell(row=target_row, column=sheet_index, value=amount_cell)
+                    
+        for col in range(1, target_worksheet.max_column + 1):
+                col_letter = get_column_letter(col)
+                target_worksheet.column_dimensions[col_letter].width = 25  # Approximate conversion
+
+        # Set text wrap for row 9
+        for col in range(1, target_worksheet.max_column + 1):
+            cell = target_worksheet.cell(row=9, column=col)
+            cell.alignment = Alignment(wrap_text=True, horizontal='center', vertical='center')
+
+        # Rename the worksheet
+        target_worksheet.title = "FOF_Data"
     
