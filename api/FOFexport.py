@@ -55,23 +55,32 @@ def process_FOF(workbook, fof_sheets):
             for row in fof_sheet.iter_rows(min_row=3):
                 keyword_cell = row[0].value
                 if keyword_cell and any(keyword in keyword_cell for keyword in mappings.keys()):
-                    # Split the keyword and get the instance number if present
-                    base_keyword, instance = re.match(r'([^\d]+)\s*(\d*)', keyword_cell).groups()
+                    # Split the keyword and get the *instance* number if present
+                    base_keyword, _ = re.match(r'([^\d]+)\s*(\d*)', keyword_cell).groups()
                     base_keyword = base_keyword.strip()
                     print(base_keyword)
-                    instance_number = int(instance) if instance else 1
+                    # instead of instance number, lets use the item code associated with that instance 
+                    item_code = row[1].value  # Assuming the item code is in the second column
 
                     # Check if there is an offset needed for this keyword
                     if base_keyword in keyword_to_offset_dict:
+                        print(base_keyword)
                         print(keyword_to_offset_dict)
-                        # Apply offsets for keywords that have them
+                        # Apply offset relative to 'X' item code associated with the keyword in the item code offset dictionary
                         offset_dict = keyword_to_offset_dict[base_keyword]
-                        offset_key = list(offset_dict.keys())[instance_number - 1]
-                        target_row = mappings[base_keyword] + offset_dict[offset_key] + 1
+                        print(offset_dict)
+                        # Check if the item code is in the offset dictionary for this keyword
+                        if item_code in offset_dict:
+                            offset = offset_dict[item_code]
+                            target_row = mappings[base_keyword] + offset + 1
+                            print(f'Target row for {base_keyword} with item code {item_code} is {target_row}')
+                        else:
+                            # If the item code is not found, and there's no offset, use the base value
+                            target_row = mappings[base_keyword] + 1
                     else:
                         # For keywords without offsets
                         target_row = mappings[base_keyword] + 1 
-
+                    print(f'final target row: {target_row},for {base_keyword} with item code {item_code} ')
                     # Amounts are in the third column (Column C)
                     amount_cell = row[2].value
                     target_worksheet.cell(row=target_row, column=sheet_index, value=amount_cell)
