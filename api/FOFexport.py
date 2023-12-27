@@ -7,11 +7,7 @@ import re
 from io import BytesIO
 from itemcodeoffsets import keyword_to_offset_dict
 
-def process_FOF(workbook, fof_sheets):
-        print(f'Preparing FOF Main')
-        print(fof_sheets)
-        
-        # Based off 2022 IRS Intructions for K-1 (1065)
+def process_FOF(workbook, fof_sheets):   
         mappings = {
             "ordinary business income": 20,
             "net rental real estate income": 21, 
@@ -55,28 +51,24 @@ def process_FOF(workbook, fof_sheets):
             for row in fof_sheet.iter_rows(min_row=3):
                 keyword_cell = row[0].value
                 if keyword_cell and any(keyword in keyword_cell for keyword in mappings.keys()):
-                    # Split the keyword and get the *instance* number if present
-                    base_keyword, _ = re.match(r'([^\d]+)\s*(\d*)', keyword_cell).groups()
+                    # match base keyword
+                    base_keyword = re.match(r'([^\d]+)\s*(\d*)', keyword_cell).groups()[0]
                     base_keyword = base_keyword.strip()
-                    print(base_keyword)
-                    # instead of instance number, lets use the item code associated with that instance 
-                    item_code = row[1].value  # Assuming the item code is in the second column
+                    # fetch item code associated with keyword instance
+                    item_code = row[1].value 
 
                     # Check if there is an offset needed for this keyword
                     if base_keyword in keyword_to_offset_dict:
-                        print(base_keyword)
-                        print(keyword_to_offset_dict)
                         # Apply offset relative to 'X' item code associated with the keyword in the item code offset dictionary
                         offset_dict = keyword_to_offset_dict[base_keyword]
-                        print(offset_dict)
                         # Check if the item code is in the offset dictionary for this keyword
                         if item_code in offset_dict:
                             offset = offset_dict[item_code]
                             target_row = mappings[base_keyword] + offset + 1
                             print(f'Target row for {base_keyword} with item code {item_code} is {target_row}')
-                        else:
+                        # else:
                             # If the item code is not found, and there's no offset, use the base value
-                            target_row = mappings[base_keyword] + 1
+                            # target_row = mappings[base_keyword] + 1
                     else:
                         # For keywords without offsets
                         target_row = mappings[base_keyword] + 1 
