@@ -106,7 +106,7 @@ class Extractor:
         doc_url = f"https://{self.blob_service_client.account_name}.blob.core.windows.net/{self.blob_container_client.container_name}/{blob_location}"
 
         poller = self.document_analysis_client.begin_analyze_document_from_url(
-            "k1-1065", blob_sas_url)
+            "k1-1065-v3", blob_sas_url)
         print("do we be alive")
         k1_1065 = poller.result()
         

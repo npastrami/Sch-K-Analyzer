@@ -1,16 +1,13 @@
 import openpyxl
 from openpyxl.utils import get_column_letter
+from openpyxl.styles import Alignment
 import numpy as np
 import pandas as pd
 import re
 from io import BytesIO
 from itemcodeoffsets import keyword_to_offset_dict
 
-def process_FOF(workbook, fof_sheets):
-        print(f'Preparing FOF Main')
-        print(fof_sheets)
-        
-        # Based off 2022 IRS Intructions for K-1 (1065)
+def process_FOF(workbook, fof_sheets):   
         mappings = {
             "ordinary business income": 20,
             "net rental real estate income": 21, 
@@ -54,24 +51,41 @@ def process_FOF(workbook, fof_sheets):
             for row in fof_sheet.iter_rows(min_row=3):
                 keyword_cell = row[0].value
                 if keyword_cell and any(keyword in keyword_cell for keyword in mappings.keys()):
-                    # Split the keyword and get the instance number if present
-                    base_keyword, instance = re.match(r'([^\d]+)\s*(\d*)', keyword_cell).groups()
+                    # match base keyword
+                    base_keyword = re.match(r'([^\d]+)\s*(\d*)', keyword_cell).groups()[0]
                     base_keyword = base_keyword.strip()
-                    print(base_keyword)
-                    instance_number = int(instance) if instance else 1
+                    # fetch item code associated with keyword instance
+                    item_code = row[1].value 
 
                     # Check if there is an offset needed for this keyword
                     if base_keyword in keyword_to_offset_dict:
-                        print(keyword_to_offset_dict)
-                        # Apply offsets for keywords that have them
+                        # Apply offset relative to 'X' item code associated with the keyword in the item code offset dictionary
                         offset_dict = keyword_to_offset_dict[base_keyword]
-                        offset_key = list(offset_dict.keys())[instance_number - 1]
-                        target_row = mappings[base_keyword] + offset_dict[offset_key] + 1
+                        # Check if the item code is in the offset dictionary for this keyword
+                        if item_code in offset_dict:
+                            offset = offset_dict[item_code]
+                            target_row = mappings[base_keyword] + offset + 1
+                            print(f'Target row for {base_keyword} with item code {item_code} is {target_row}')
+                        # else:
+                            # If the item code is not found, and there's no offset, use the base value
+                            # target_row = mappings[base_keyword] + 1
                     else:
                         # For keywords without offsets
                         target_row = mappings[base_keyword] + 1 
-
+                    print(f'final target row: {target_row},for {base_keyword} with item code {item_code} ')
                     # Amounts are in the third column (Column C)
                     amount_cell = row[2].value
                     target_worksheet.cell(row=target_row, column=sheet_index, value=amount_cell)
+                    
+        for col in range(1, target_worksheet.max_column + 1):
+                col_letter = get_column_letter(col)
+                target_worksheet.column_dimensions[col_letter].width = 25  # Approximate conversion
+
+        # Set text wrap for row 9
+        for col in range(1, target_worksheet.max_column + 1):
+            cell = target_worksheet.cell(row=9, column=col)
+            cell.alignment = Alignment(wrap_text=True, horizontal='center', vertical='center')
+
+        # Rename the worksheet
+        target_worksheet.title = "FOF_Data"
     
