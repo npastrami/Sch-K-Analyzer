@@ -67,8 +67,8 @@ def process_FOF(workbook, fof_sheets):
                             target_row = mappings[base_keyword] + offset + 1
                             print(f'Target row for {base_keyword} with item code {item_code} is {target_row}')
                         else:
-                            # add the amount to an array of keywords with invalid item codes, but do not print this amount in the excel sheet
-                            print(f'Item code {item_code} is not in the offset dictionary for {base_keyword}')
+                            invalid_item_codes = { base_keyword: item_code }
+                            print(f'This Keyword-Item Code pairing is invalid: {invalid_item_codes}')
                             continue
                     else:
                         # For keywords without offsets
