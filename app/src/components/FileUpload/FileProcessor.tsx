@@ -1,64 +1,57 @@
 import React from "react";
-import { FileStatus, FileWithID } from ".";
+import { FileStatus, FileWithID } from "./index";
+
+interface ProcessResult {
+  status: string;
+}
 
 export class FileProcessor {
-  clientID: string;
-  versionID: string;
-  files: FileWithID[];
-  setFiles: React.Dispatch<React.SetStateAction<FileWithID[]>>;
-
   constructor(
-    clientID: string,
-    versionID: string,
-    files: FileWithID[],
-    setFiles: React.Dispatch<React.SetStateAction<FileWithID[]>>
-  ) {
-    this.clientID = clientID;
-    this.versionID = versionID;
-    this.files = files;
-    this.setFiles = setFiles;
-  }
+    public clientID: string,
+    public versionID: string,
+    public files: FileWithID[],
+    public setFiles: React.Dispatch<React.SetStateAction<FileWithID[]>>
+  ) {}
 
-  async uploadFile(file: FileWithID): Promise<any> {
+  async processFiles(): Promise<void> {
     const formData = new FormData();
-    formData.append("file", file.file);
+    this.files.forEach((file) => {
+      formData.append("files[]", file.file);
+      formData.append("formTypes[]", file.formType ?? "");
+    });
     formData.append("clientID", this.clientID);
     formData.append("versionID", this.versionID);
-    formData.append("docType", file.formType);  
-  
-    const response = await fetch("/upload", {  
-      method: "POST",
-      body: formData,
+
+    this.files.forEach((file) => {
+      if (file.formType !== "None") {
+        this.setFileStatus(file.id, FileStatus.Extracting);
+      }  else {
+            this.setFileStatus(file.id, FileStatus.Uploading);
+      }
     });
 
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.message || "Unknown server error");
+    try {
+      const response = await fetch("/api/process_doc", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Server responded with an error.");
+      }
+
+      const results: ProcessResult[] = await response.json();
+
+      results.forEach((result: ProcessResult, index: number) => {
+        const file = this.files[index];
+        this.setFileStatus(file.id, result.status as FileStatus);
+      });
+    } catch (error) {
+      this.files.forEach((file) => {
+        this.setFileStatus(file.id, FileStatus.Error);
+      });
+      console.error("An error occurred during file processing:", error);
     }
-
-    return await response.json();
-  }
-
-  async extractData(file: FileWithID): Promise<any> {
-    const response = await fetch("/extract_k1_1065", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        clientID: this.clientID,
-        versionID: this.versionID,
-        fileID: file.id,
-        blobName: file.file.name,
-      }),
-    });
-
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.message || "Unknown server error");
-    }
-
-    return await response.json();
   }
 
   async setFileStatus(id: string, status: FileStatus): Promise<void> {
@@ -67,26 +60,7 @@ export class FileProcessor {
     });
   }
 
-  async processEachFile(file: FileWithID): Promise<void> {
-      await this.setFileStatus(file.id, "Uploading...");
-      await this.uploadFile(file); 
-      if (file.formType === "None") {
-        await this.setFileStatus(file.id, "Upload Completed");
-      } else if (file.formType === "K1-1065") {
-        await this.setFileStatus(file.id, "Extracting...");
-        const extractedData = await this.extractData(file);
-        if (extractedData.isEmpty) {
-          await this.setFileStatus(file.id, "Empty Extraction");
-        } else {
-          await this.setFileStatus(file.id, "Extract Completed");
-        }
-      } else {
-        await this.setFileStatus(file.id, "Error");
-      }    
-  }
-
   async startProcessing(): Promise<void> {
-    const promises = this.files.map((file) => this.processEachFile(file));
-    await Promise.allSettled(promises);
+    await this.processFiles();
   }
 }

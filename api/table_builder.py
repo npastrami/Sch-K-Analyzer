@@ -1,41 +1,21 @@
-import psycopg2
 import json
+from database import Database
 
 class TableBuilder:
-    def __init__(self):
-        self.conn = psycopg2.connect(
-            dbname="k1-analyzer",
-            user="postgres",
-            password="kr3310",
-            host="localhost",
-            port="5432"
-        )
-        self.cur = self.conn.cursor()
+    def __init__(self, client_id, doc_url):
+        self.database = Database(client_id, doc_url)
 
-    def fetch_client_data(self, client_id):
-        """
-        Fetch client_docs and extracted_fields for a specific client_id.
-        Returns the data as a JSON object.
-        """
-        # Fetch data from client_docs
-        self.cur.execute("SELECT * FROM client_docs WHERE client_id = %s;", (client_id,))
-        client_docs = self.cur.fetchall()
-        client_docs_column_names = [desc[0] for desc in self.cur.description]
-        client_docs_data = [dict(zip(client_docs_column_names, record)) for record in client_docs]
+    async def fetch_client_data(self, client_id):
+        await self.database.ensure_connected()
 
-        # Close database connection
-        self.close()
+        records = await self.database.conn.fetch("SELECT * FROM client_docs WHERE client_id = $1;", client_id)
+        client_docs_data = [dict(record) for record in records]
 
-        # Prepare final JSON data
         final_data = {
             'client_docs': client_docs_data,
         }
 
         return json.dumps(final_data)
 
-    def close(self):
-        """
-        Close the database connection.
-        """
-        self.cur.close()
-        self.conn.close()
+    async def close(self):
+        await self.database.close()

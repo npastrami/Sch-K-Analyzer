@@ -6,12 +6,12 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/upload': 'http://localhost:5000',
-      '/extract_k1_1065': 'http://localhost:5000',
-      '/refresh': 'http://localhost:5000',
-      '/get_client_data': 'http://localhost:5000',
-      '/download_csv': 'http://localhost:5000',
-      '/download_all_documents': 'http://localhost:5000',
+      '/api': {
+        target: 'http://localhost:5000', 
+        changeOrigin: true, //changeOrigin: *true helps in circumventing CORS-related issues by modifying the Origin header to match the target URL
+        secure: false, //secure: *false {change for prod} allows the proxy to work with servers that have self-signed or otherwise untrusted SSL certificates
+        rewrite: (path) => path.replace(/^\/api/, '')
+      },
     },
   },
 });

@@ -7,14 +7,23 @@ import { v4 as uuidv4 } from 'uuid';
 import { Dropzone } from './Dropzone';
 import { FileList } from './FileList';
 
-export type FileStatus = 'Pending' | 'Uploading...' | 'Extracting...' | 'Upload Completed' | 'Extract Completed' | 'Error' | "Empty Extraction";
+export enum FileStatus {
+  Pending = 'Pending',
+  Uploading = 'Uploading...',
+  Extracting = 'Extracting...',
+  Sorting = 'Sorting...',
+  UploadCompleted = 'Upload Completed',
+  ExtractCompleted = 'Extract Completed',
+  Error = 'Error',
+  EmptyExtraction = 'Empty Extraction'
+}
 
 export type FileWithID = {
   file: File
   id: string;
   path?: string | undefined;
   status: FileStatus;
-  formType: "None" | "K1-1065" | "Form";
+  formType: string;
 }
 
 export const FileUpload = () => {
@@ -23,7 +32,7 @@ export const FileUpload = () => {
   const handleIdentifier = (newFiles: File[]) => {
     const updatedFiles: FileWithID[] = newFiles.map((file: File) => {
       const id = uuidv4();
-      return { file, id, path: file.name, status: 'Pending', formType: 'None' }; // Now each object is a FileWithID
+      return { file, id, path: file.name, status: FileStatus.Pending, formType: 'K1-1065' }; // Now each object is a FileWithID
     });
     
     setFilesToUpload(prevFiles => [...prevFiles, ...updatedFiles]);

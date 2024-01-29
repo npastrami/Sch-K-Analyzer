@@ -24,7 +24,7 @@ function App() {
             textAlign: 'left',
           }}
         >
-          K-1 Analyzer
+          Schedule K Streamer
         </Typography>
         
         <JobInput />
