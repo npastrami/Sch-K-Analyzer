@@ -158,12 +158,6 @@ async def download_all_documents():
         fof_sheet_objects = [workbook[sheet_name] for sheet_name in workbook.sheetnames if 'FOF_' in sheet_name]
         
         process_FOF(workbook, fof_sheet_objects) 
-        
-        # # now remove original sheet and FOF sheet
-        # for document_name in document_names:
-        #     sanitized_name = sanitize_blob_name(document_name)
-        #     workbook.remove(workbook[sanitized_name])
-        #     workbook.remove(workbook[f"FOF_{sanitized_name}"])
 
         # Save the workbook to a BytesIO object
         output_stream = BytesIO()
