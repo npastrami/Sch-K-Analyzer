@@ -45,15 +45,19 @@ export const FileList: FC<FileListProps> = ({ files, onRemove }) => {
 
   if (files.length === 0) return null;
 
-  const updateFormType = (id: string, formType: "None" | "K1-1065" | "Form") => {
-    setLocalFiles((prevFiles) => {
-      return prevFiles.map((f) => (f.id === id ? { ...f, formType } : f));
-    });
+  type FormType = "None" | "K1-1065" | "Form";
+
+  const updateFormType = (id: string, formType: FormType) => {
+    setLocalFiles(prevFiles => 
+      prevFiles.map(file => 
+        file.id === id ? { ...file, formType } : file
+      )
+    );
   };
 
   const handleDownload = async (documentName: string, clientID: string) => {
     console.log("Download button clicked");
-    const response = await fetch(`/download_csv/${documentName}`, {
+    const response = await fetch(`/api/download_csv/${documentName}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -70,7 +74,7 @@ export const FileList: FC<FileListProps> = ({ files, onRemove }) => {
 
   const handleDownloadAll = async (clientID: string) => {
     const documentNames = localFiles.map(file => file.path);
-    const response = await fetch('/download_all_documents', {
+    const response = await fetch('/api/download_all_documents', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -154,7 +158,7 @@ export const FileList: FC<FileListProps> = ({ files, onRemove }) => {
                   {/* create a drop down with multiple selects Form, None, W2 */}
                   <Select
                     variant="outlined"
-                    defaultValue="None"
+                    defaultValue="K1-1065"
                     css={{ 
                       width: "90%",
                       height: "35px", 
@@ -167,7 +171,7 @@ export const FileList: FC<FileListProps> = ({ files, onRemove }) => {
                         padding: "10px 14px"
                       }
                     }}
-                    onChange={(e) => updateFormType(file.id, e.target.value as "None" | "K1-1065")}
+                    onChange={(e) => updateFormType(file.id, e.target.value as FormType)}
                     MenuProps={{
                       classes: { paper: "menu-paper" },  // Custom class for the paper component
                     }}

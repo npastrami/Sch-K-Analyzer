@@ -1,6 +1,5 @@
-import psycopg2
+import asyncpg
 import os
-import re
 import csv
 from io import StringIO
 
@@ -8,17 +7,24 @@ class Database:
     def __init__(self, client_id, doc_url):
         self.client_id = client_id
         self.doc_url = doc_url
-        self.conn = psycopg2.connect(
-            dbname="k1-analyzer",
+        self.conn = None
+        
+    async def ensure_connected(self):
+        if self.conn is None:
+            await self.connect()
+
+    async def connect(self):
+        self.conn = await asyncpg.connect(
+            database="k1-analyzer",
             user="postgres",
             password="kr3310",
             host="localhost",
             port="5432"
         )
-        self.cur = self.conn.cursor()
-        self.create_table()
+        await self.create_table()
 
-    def create_table(self):
+    async def create_table(self):
+        await self.ensure_connected()
         create_table_query = """
         CREATE TABLE IF NOT EXISTS client_docs (
             id SERIAL PRIMARY KEY,
@@ -31,8 +37,7 @@ class Database:
             gosystems_id TEXT
         );
         """
-        self.cur.execute(create_table_query)
-        self.conn.commit()
+        await self.conn.execute(create_table_query)
         
         create_extracted_fields_table_query = """
         CREATE TABLE IF NOT EXISTS extracted_fields (
@@ -48,46 +53,38 @@ class Database:
             gosystems_id TEXT
         );
         """
-        self.cur.execute(create_extracted_fields_table_query)
-        self.conn.commit()
+        await self.conn.execute(create_extracted_fields_table_query)
 
-    def post2postgres_upload(self, client_id, doc_url, doc_status, doc_type, container_name, gosystems_id):
+    async def post2postgres_upload(self, client_id, doc_url, doc_status, doc_type, container_name, gosystems_id):
+        await self.ensure_connected()
         doc_name = os.path.basename(doc_url)  
         insert_query = """
         INSERT INTO client_docs (client_id, doc_url, doc_name, doc_status, doc_type, container_name, gosystems_id)  
-        VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id;
+        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id;
         """
-        self.cur.execute(insert_query, (client_id, doc_url, doc_name, doc_status, doc_type, container_name, gosystems_id))  
-        self.conn.commit()
-
-        last_inserted_id = self.cur.fetchone()[0]
+        last_inserted_id = await self.conn.fetchval(insert_query, client_id, doc_url, doc_name, doc_status, doc_type, container_name, gosystems_id)
         return last_inserted_id
     
-    def post2postgres_extract(self, client_id, doc_url, doc_status, doc_type, doc_name, field_name, field_value, confidence, gosystems_id):
+    async def post2postgres_extract(self, client_id, doc_url, doc_status, doc_type, doc_name, field_name, field_value, confidence, gosystems_id):
+        await self.ensure_connected()
         insert_query = """
         INSERT INTO extracted_fields (client_id, doc_url, doc_status, doc_type, doc_name, field_name, field_value, confidence, gosystems_id) 
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id;
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id;
         """
-        self.cur.execute(insert_query, (client_id, doc_url, doc_status, doc_type, doc_name, field_name, field_value, confidence, gosystems_id))
-        
-        last_inserted_id = self.cur.fetchone()[0]
-        self.conn.commit()
+        last_inserted_id = await self.conn.fetchval(insert_query, client_id, doc_url, doc_status, doc_type, doc_name, field_name, field_value, confidence, gosystems_id)
 
         update_status_query = """
-        UPDATE client_docs SET doc_status = 'extracted' WHERE client_id = %s AND doc_url = %s;
+        UPDATE client_docs SET doc_status = 'extracted' WHERE client_id = $1 AND doc_url = $2;
         """
-        self.cur.execute(update_status_query, (client_id, doc_url))
-        self.conn.commit()
+        await self.conn.execute(update_status_query, client_id, doc_url)
         
         return last_inserted_id
     
-    def generate_csv(self, document_id, client_id):
+    async def generate_csv(self, document_id, client_id):
+        await self.ensure_connected()
         # Query to fetch all fields and values for a specific document and client
-        query = """ SELECT field_name, field_value, confidence FROM extracted_fields WHERE doc_name = %s AND client_id = %s"""
-        self.cur.execute(query, (document_id, client_id))
-
-        # Fetch all rows
-        rows = self.cur.fetchall()
+        query = """ SELECT field_name, field_value, confidence FROM extracted_fields WHERE doc_name = $1 AND client_id = $2"""
+        rows = await self.conn.fetch(query, document_id, client_id)
         # Initialize CSV output in memory
         output = StringIO()
         csv_writer = csv.writer(output)
@@ -108,10 +105,10 @@ class Database:
 
         return csv_content
     
-    def generate_sheet_data(self, document_id, client_id):
-        query = """SELECT field_name, field_value, confidence FROM extracted_fields WHERE doc_name = %s AND client_id = %s"""
-        self.cur.execute(query, (document_id, client_id))
-        rows = self.cur.fetchall()
+    async def generate_sheet_data(self, document_id, client_id):
+        await self.ensure_connected()
+        query = """SELECT field_name, field_value, confidence FROM extracted_fields WHERE doc_name = $1 AND client_id = $2"""
+        rows = await self.conn.fetch(query, document_id, client_id)
 
         original_sheet_data = [
             ["Document Name: {}".format(document_id)],
@@ -169,6 +166,5 @@ class Database:
 
         return original_sheet_data, fof_sheet_data
 
-    def close(self):
-        self.cur.close()    
-        self.conn.close()
+    async def close(self):
+        await self.conn.close()
