@@ -139,11 +139,11 @@ async def download_all_documents():
         workbook = openpyxl.Workbook()
         workbook.remove(workbook.active)  # Remove the default sheet
 
-        copy_worksheet(fof_workbook, workbook, 'Sheet1')  # Ensure this is an async function
+        copy_worksheet(fof_workbook, workbook, 'Sheet1') 
 
         for document_name in document_names:
             sanitized_name = sanitize_blob_name(document_name)
-            original_data, fof_data = await db.generate_sheet_data(sanitized_name, client_id)  # Ensure this is an async function
+            original_data, fof_data = await db.generate_sheet_data(sanitized_name, client_id)  
             
             # Add original sheet
             original_sheet = workbook.create_sheet(title=sanitized_name)
@@ -157,7 +157,13 @@ async def download_all_documents():
 
         fof_sheet_objects = [workbook[sheet_name] for sheet_name in workbook.sheetnames if 'FOF_' in sheet_name]
         
-        process_FOF(workbook, fof_sheet_objects)  # Ensure this is an async function
+        process_FOF(workbook, fof_sheet_objects) 
+        
+        # # now remove original sheet and FOF sheet
+        # for document_name in document_names:
+        #     sanitized_name = sanitize_blob_name(document_name)
+        #     workbook.remove(workbook[sanitized_name])
+        #     workbook.remove(workbook[f"FOF_{sanitized_name}"])
 
         # Save the workbook to a BytesIO object
         output_stream = BytesIO()
