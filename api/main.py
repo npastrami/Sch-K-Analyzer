@@ -126,7 +126,7 @@ async def download_all_documents():
         container_client = blob_service_client.get_container_client(azure_credentials.BUCKET_NAME_1065)
 
         # Download the existing FOFtest.xlsx
-        blob_client = container_client.get_blob_client('FOFtest.xlsx')
+        blob_client = container_client.get_blob_client('FOFtemplate.xlsx')
         fof_test_stream = BytesIO()
         stream_downloader = await blob_client.download_blob()
         await stream_downloader.readinto(fof_test_stream)
