@@ -148,18 +148,31 @@ def process_FOF(workbook, fof_sheets):
             for col_num in range(5, target_worksheet.max_column + 1):  # Start from column E, which is the 5th column
                 cell = target_worksheet.cell(row=row_num, column=col_num)
                 cell_value = cell.value
-                # Check if the cell contains a string that can be converted to an integer
-                if isinstance(cell_value, str):
-                    # Attempt to convert string to integer if it's not empty and is numeric
-                    try:
-                        if cell_value.strip().isdigit():  # Check if the string is numeric
-                            cell_value = int(cell_value)
-                        else:
-                            continue
-                    except ValueError:
-                        continue
-                if isinstance(cell_value, (int, float)):
-                    sum_value += cell_value # if sum_value = 0 then make the cell value empty
+                # Check if the cell contains a string with parentheses or a negative sign
+                negative_values = []
+                # if there is no parentheses or negative sign, then the cell value is a positive number
+                positive_values = []
+                if cell_value is not None and isinstance(cell_value, str):
+                    if '(' in cell_value or ')' in cell_value or '-' in cell_value:
+                        cell_value_without_symbols = cell_value.replace(',', '').replace('(', '').replace(')', '').replace('-', '')
+                        if cell_value_without_symbols:
+                            negative_values.append(abs(int(cell_value_without_symbols)))
+                    else:
+                        cell_value_without_symbols = cell_value.replace(',', '').replace('(', '').replace(')', '').replace('-', '')
+                        if cell_value_without_symbols:
+                            positive_values.append(abs(int(cell_value_without_symbols)))
+                
+                # Sum positive and negative values into sum_value
+                sum_value = sum(positive_values) - sum(negative_values)
+                   
+                
+                # # remove commas, parentheses and negative signs
+                # if cell_value is not None and isinstance(cell_value, str):
+                #     # check if the cell value is a string has parentheses or a negative sign
+                #     if '(' in cell_value or ')' in cell_value or '-' in cell_value:
+                #         # add absolute value of cell value to list of negative values
+                #         negative_values.append(abs(int(cell_value.replace(',', '').replace('(', '').replace(')', '').replace('-', ''))))
+                #     cell_value = cell_value.replace(',', '').replace('(', '').replace(')', '').replace('-', '')
         
             # # lets highlight the target cells of base keywords with item footnotes
             # for row in range(55, 291):
